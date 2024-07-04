@@ -28,10 +28,13 @@ target_include_directories(${TARGET_NAME} PUBLIC
 )
 
 target_link_libraries(${TARGET_NAME}
-        user32
+#        user32
         dxgi
         d3d11
         dxguid
-        libcef
-        cef_sandbox
+        cef
+)
+
+target_compile_definitions(${TARGET_NAME} PRIVATE
+
 )

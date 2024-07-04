@@ -29,32 +29,24 @@
 #define CINTERFACE
 #define COBJMACROS
 #define WIN32_LEAN_AND_MEAN
-//#define INITGUID
-//#include <guiddef.h>
-
 #include <d3d11_1.h>
 #include <d3dcompiler.h>
 #include <dxgi1_6.h>
 #include <stddef.h>
 #include <windows.h>
 
-//EXTERN_C const IID IID_ID3D11DeviceContext1 = {0x1841e5c8, 0x16b0, 0x489b, {0xbc, 0xc8, 0x44, 0xcf, 0xb2, 0x6e, 0xd2, 0x16}};
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+
+#include <include/cef_version.h>
 
 #include "cef_app.h"
 #include "cef_base.h"
 #include "cef_client.h"
 #include "cef_life_span_handler.h"
-#include <include/cef_version.h>
 
-
-cef_life_span_handler_t g_life_span_handler = {};
-
+mxc_cef_life_span_handler_t g_life_span_handler = {};
 
 [[noreturn]] void Panic(const char* file, const int line, const char* message) {
   fprintf(stderr, "\n%s:%d Error! %s\n", file, line, message);
@@ -84,7 +76,6 @@ cef_life_span_handler_t g_life_span_handler = {};
     HRESULT hr = command;             \
     REQUIRE_WIN32(SUCCEEDED(hr), hr); \
   }
-
 
 int main(int argc, char* argv[]) {
 
@@ -138,15 +129,14 @@ int main(int argc, char* argv[]) {
       printf("CEF version: %s\n", CEF_VERSION);
     }
 
-    cef_main_args_t main_args = {
-        .instance = GetModuleHandle(NULL),
-    };
-
-    cef_app_t app = {};
+    mxc_cef_app_t app = {};
     initialize_cef_app(&app);
 
     printf("cef_execute_process, argc=%d\n", argc);
-    int code = cef_execute_process(&main_args, &app, NULL);
+    cef_main_args_t main_args = {
+        .instance = GetModuleHandle(NULL),
+    };
+    int code = cef_execute_process(&main_args, (cef_app_t*) &app, NULL);
     if (code >= 0) {
       _exit(code);
     }
@@ -158,7 +148,7 @@ int main(int argc, char* argv[]) {
     };
 
     printf("cef_initialize\n");
-    cef_initialize(&main_args, &settings, &app, NULL);
+    cef_initialize(&main_args, &settings, (cef_app_t*) &app, NULL);
 
     char window_name[] = "moxaic";
     cef_string_t cef_window_name = {};
@@ -172,13 +162,16 @@ int main(int argc, char* argv[]) {
         .bounds.y = CW_USEDEFAULT,
         .bounds.width = CW_USEDEFAULT,
         .bounds.height = CW_USEDEFAULT,
+//        .windowless_rendering_enabled = 1,
+//        .shared_texture_enabled = 1,
+//        .external_begin_frame_enabled = 1,
     };
 
     cef_browser_settings_t browser_settings = {
         .size = sizeof(cef_browser_settings_t),
     };
 
-    cef_client_t client = {};
+    mxc_cef_client_t client = {};
     initialize_cef_client(&client);
     initialize_cef_life_span_handler(&g_life_span_handler);
 
@@ -187,7 +180,7 @@ int main(int argc, char* argv[]) {
     cef_string_utf8_to_utf16(url, strlen(url), &cef_url);
 
     printf("cef_browser_host_create_browser\n");
-    cef_browser_host_create_browser(&window_info, &client, &cef_url, &browser_settings, NULL, NULL);
+    cef_browser_host_create_browser(&window_info, (struct _cef_client_t*) &client, &cef_url, &browser_settings, NULL, NULL);
 
     printf("cef_run_message_loop\n");
     cef_run_message_loop();

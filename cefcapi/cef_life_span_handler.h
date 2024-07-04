@@ -1,15 +1,15 @@
-// CEF C API example
-// Project website: https://github.com/cztomczak/cefcapi
-
 #pragma once
 
 #include "cef_base.h"
 #include "include/capi/cef_app_capi.h"
 #include "include/capi/cef_life_span_handler_capi.h"
 
-// ----------------------------------------------------------------------------
-// struct cef_life_span_handler_t
-// ----------------------------------------------------------------------------
+typedef struct mxc_cef_life_span_handler_t {
+  cef_life_span_handler_t cef;
+  int ref_count;
+} mxc_cef_life_span_handler_t;
+
+extern mxc_cef_life_span_handler_t g_life_span_handler;
 
 ///
 // Implement this structure to handle events related to browser life span. The
@@ -37,10 +37,13 @@ void CEF_CALLBACK on_before_close(struct _cef_life_span_handler_t* self,
     cef_quit_message_loop();
 }
 
-void initialize_cef_life_span_handler(cef_life_span_handler_t* handler) {
-    DEBUG_CALLBACK("initialize_cef_life_span_handler\n");
-    handler->base.size = sizeof(cef_life_span_handler_t);
-    initialize_cef_base_ref_counted((cef_base_ref_counted_t*)handler);
-    // callbacks - there are many, but implementing only one
-    handler->on_before_close = on_before_close;
+CEF_REF_CALLBACKS(handler, mxc_cef_life_span_handler_t);
+
+void initialize_cef_life_span_handler(mxc_cef_life_span_handler_t* handler) {
+    printf("initialize_cef_life_span_handler\n");
+    handler->cef.base.size = sizeof(cef_life_span_handler_t);
+
+    CEF_SET_REF_CALLBACKS(handler, handler);
+
+    handler->cef.on_before_close = on_before_close;
 }

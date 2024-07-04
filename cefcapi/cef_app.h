@@ -6,9 +6,10 @@
 #include "cef_base.h"
 #include "include/capi/cef_app_capi.h"
 
-// ----------------------------------------------------------------------------
-// cef_app_t
-// ----------------------------------------------------------------------------
+typedef struct mxc_cef_app_t {
+  cef_app_t cef;
+  int ref_count;
+} mxc_cef_app_t;
 
 ///
 // Implement this structure to provide handler implementations. Methods will be
@@ -27,9 +28,9 @@
 // in undefined behavior including crashes.
 ///
 void CEF_CALLBACK on_before_command_line_processing(
-        struct _cef_app_t* self, const cef_string_t* process_type,
-        struct _cef_command_line_t* command_line) {
-    DEBUG_CALLBACK("on_before_command_line_processing\n");
+    struct _cef_app_t* self, const cef_string_t* process_type,
+    struct _cef_command_line_t* command_line) {
+  DEBUG_CALLBACK("on_before_command_line_processing\n");
 }
 
 ///
@@ -39,9 +40,9 @@ void CEF_CALLBACK on_before_command_line_processing(
 // processes.
 ///
 void CEF_CALLBACK on_register_custom_schemes(
-        struct _cef_app_t* self,
-        struct _cef_scheme_registrar_t* registrar) {
-    DEBUG_CALLBACK("on_register_custom_schemes\n");
+    struct _cef_app_t* self,
+    struct _cef_scheme_registrar_t* registrar) {
+  DEBUG_CALLBACK("on_register_custom_schemes\n");
 }
 
 ///
@@ -50,40 +51,40 @@ void CEF_CALLBACK on_register_custom_schemes(
 // If no handler is returned resources will be loaded from pack files. This
 // function is called by the browser and render processes on multiple threads.
 ///
-struct _cef_resource_bundle_handler_t*
-        CEF_CALLBACK get_resource_bundle_handler(struct _cef_app_t* self) {
-    DEBUG_CALLBACK("get_resource_bundle_handler\n");
-    return NULL;
+struct _cef_resource_bundle_handler_t* CEF_CALLBACK get_resource_bundle_handler(struct _cef_app_t* self) {
+  DEBUG_CALLBACK("get_resource_bundle_handler\n");
+  return NULL;
 }
 
 ///
 // Return the handler for functionality specific to the browser process. This
 // function is called on multiple threads in the browser process.
 ///
-struct _cef_browser_process_handler_t* 
-        CEF_CALLBACK get_browser_process_handler(struct _cef_app_t* self) {
-    DEBUG_CALLBACK("get_browser_process_handler\n");
-    return NULL;
+struct _cef_browser_process_handler_t* CEF_CALLBACK get_browser_process_handler(struct _cef_app_t* self) {
+  DEBUG_CALLBACK("get_browser_process_handler\n");
+  return NULL;
 }
 
 ///
 // Return the handler for functionality specific to the render process. This
 // function is called on the render process main thread.
 ///
-struct _cef_render_process_handler_t*
-        CEF_CALLBACK get_render_process_handler(struct _cef_app_t* self) {
-    DEBUG_CALLBACK("get_render_process_handler\n");
-    return NULL;
+struct _cef_render_process_handler_t* CEF_CALLBACK get_render_process_handler(struct _cef_app_t* self) {
+  DEBUG_CALLBACK("get_render_process_handler\n");
+  return NULL;
 }
 
-void initialize_cef_app(cef_app_t* app) {
-    printf("initialize_cef_app\n");
-    app->base.size = sizeof(cef_app_t);
-    initialize_cef_base_ref_counted((cef_base_ref_counted_t*)app);
-    // callbacks
-    app->on_before_command_line_processing = on_before_command_line_processing;
-    app->on_register_custom_schemes = on_register_custom_schemes;
-    app->get_resource_bundle_handler = get_resource_bundle_handler;
-    app->get_browser_process_handler = get_browser_process_handler;
-    app->get_render_process_handler = get_render_process_handler;
+CEF_REF_CALLBACKS(app, mxc_cef_app_t);
+
+void initialize_cef_app(mxc_cef_app_t* app) {
+  printf("initialize_cef_app\n");
+  app->cef.base.size = sizeof(cef_app_t);
+
+  CEF_SET_REF_CALLBACKS(app, app);
+
+  app->cef.on_before_command_line_processing = on_before_command_line_processing;
+  app->cef.on_register_custom_schemes = on_register_custom_schemes;
+  app->cef.get_resource_bundle_handler = get_resource_bundle_handler;
+  app->cef.get_browser_process_handler = get_browser_process_handler;
+  app->cef.get_render_process_handler = get_render_process_handler;
 }

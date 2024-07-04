@@ -1,79 +1,44 @@
-// CEF C API example
-// Project website: https://github.com/cztomczak/cefcapi
-
 #pragma once
 
-#include <unistd.h>
 #include "include/capi/cef_base_capi.h"
+#include <unistd.h>
 
-// Set to 1 to check if add_ref() and release()
-// are called and to track the total number of calls.
-// add_ref will be printed as "+", release as "-".
-#define DEBUG_REFERENCE_COUNTING 0
-
-// Print only the first execution of the callback,
-// ignore the subsequent.
-#define DEBUG_CALLBACK(x) { \
+#define DEBUG_CALLBACK(x)      \
+  {                            \
     static int first_call = 1; \
-    if (first_call == 1) { \
-        first_call = 0; \
-        printf(x); \
-    } \
-}
+    if (first_call == 1) {     \
+      first_call = 0;          \
+      printf(x);               \
+    }                          \
+  }
 
-// ----------------------------------------------------------------------------
-// cef_base_ref_counted_t
-// ----------------------------------------------------------------------------
+#define CEF_REF_CALLBACKS(prefix, type)                               \
+  static void CEF_CALLBACK prefix##_add_ref(type* self) {             \
+    __atomic_fetch_add(&self->ref_count, 1, __ATOMIC_RELAXED);        \
+    printf(" +app%d ", self->ref_count);                              \
+  }                                                                   \
+  static int CEF_CALLBACK prefix##_release(type* self) {              \
+    __atomic_fetch_sub(&self->ref_count, 1, __ATOMIC_RELAXED);        \
+    printf(" -app%d ", self->ref_count);                              \
+    return 1;                                                         \
+  }                                                                   \
+  static int CEF_CALLBACK prefix##_has_one_ref(type* self) {          \
+    int val;                                                          \
+    __atomic_load(&self->ref_count, &val, __ATOMIC_RELAXED);          \
+    printf(" app_has_one_ref%d ", val);                               \
+    __builtin_trap();                                                 \
+  }                                                                   \
+  static int CEF_CALLBACK prefix##_has_at_least_one_ref(type* self) { \
+    int val;                                                          \
+    __atomic_load(&self->ref_count, &val, __ATOMIC_RELAXED);          \
+    printf(" app_has_at_least_one_ref%d ", val);                      \
+    __builtin_trap();                                                 \
+  }
 
-///
-// Structure defining the reference count implementation functions.
-// All framework structures must include the cef_base_ref_counted_t
-// structure first.
-///
-
-///
-// Increment the reference count.
-///
-void CEF_CALLBACK add_ref(cef_base_ref_counted_t* self) {
-    DEBUG_CALLBACK("cef_base_ref_counted_t.add_ref\n");
-    if (DEBUG_REFERENCE_COUNTING)
-        printf("+");
-}
-
-///
-// Decrement the reference count.  Delete this object when no references
-// remain.
-///
-int CEF_CALLBACK release(cef_base_ref_counted_t* self) {
-    DEBUG_CALLBACK("cef_base_ref_counted_t.release\n");
-    if (DEBUG_REFERENCE_COUNTING)
-        printf("-");
-    return 1;
-}
-
-///
-// Returns the current number of references.
-///
-int CEF_CALLBACK has_one_ref(cef_base_ref_counted_t* self) {
-    DEBUG_CALLBACK("cef_base_ref_counted_t.has_one_ref\n");
-    if (DEBUG_REFERENCE_COUNTING)
-        printf("=");
-    return 1;
-}
-
-void initialize_cef_base_ref_counted(cef_base_ref_counted_t* base) {
-    printf("initialize_cef_base_ref_counted\n");
-    // Check if "size" member was set.
-    size_t size = base->size;
-    // Let's print the size in case sizeof was used
-    // on a pointer instead of a structure. In such
-    // case the number will be very high.
-    printf("cef_base_ref_counted_t.size = %lu\n", (unsigned long)size);
-    if (size <= 0) {
-        printf("FATAL: initialize_cef_base failed, size member not set\n");
-        _exit(1);
-    }
-    base->add_ref = add_ref;
-    base->release = release;
-    base->has_one_ref = has_one_ref;
-}
+#define CEF_SET_REF_CALLBACKS(prefix, type)                                                                         \
+  {                                                                                                                 \
+    type->cef.base.add_ref = (void (*)(struct _cef_base_ref_counted_t*)) prefix##_add_ref;                          \
+    type->cef.base.release = (int (*)(struct _cef_base_ref_counted_t*)) prefix##_release;                           \
+    type->cef.base.has_one_ref = (int (*)(struct _cef_base_ref_counted_t*)) prefix##_has_one_ref;                   \
+    type->cef.base.has_at_least_one_ref = (int (*)(struct _cef_base_ref_counted_t*)) prefix##_has_at_least_one_ref; \
+  }
