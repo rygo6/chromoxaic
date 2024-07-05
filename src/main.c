@@ -89,25 +89,31 @@ mxc_cef_render_handler_t g_cef_render_handler = {};
 int main(int argc, char* argv[]) {
 
   printf("\nProcess args: ");
-  if (argc == 1) {
-    g_main_process = true;
-    printf("none (Main process)");
-  } else {
-    for (int i = 1; i < argc; i++) {
-      if (strlen(argv[i]) > 128)
-        printf("... ");
-      else
+  switch (argc) {
+    case 0:
+      printf("CEF version: %s\n", CEF_VERSION);
+      break;
+    case 1:
+      printf("none (Main process)");
+    default:
+      for (int i = 1; i < argc; i++) {
         printf("%s ", argv[i]);
-    }
+      }
   }
-  printf("\n\n");
 
-  if (g_main_process) {
-    // Test window
+  mxc_cef_app_t app = {};
+  initialize_cef_app(&app);
+
+  printf("cef_execute_process, argc=%d\n", argc);
+  cef_main_args_t main_args = {.instance = GetModuleHandle(NULL)};
+  int code = cef_execute_process(&main_args, (cef_app_t*) &app, NULL);
+  if (code >= 0) {
+    _exit(code);
+  }
+
+  {// Test window
     midCreateWindow();
-  }
 
-  {// DX
     IDXGISwapChain* render_swapchain;
     ID3D11Device* render_device;
     ID3D11DeviceContext* render_context;
@@ -124,39 +130,23 @@ int main(int argc, char* argv[]) {
     IDXGIFactory* factory;
     DX_REQUIRE(CreateDXGIFactory(&IID_IDXGIFactory, (void**) &factory));
 
-    //    DXGI_SWAP_CHAIN_DESC desc = {
-    //        .BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-    //        .BufferDesc.RefreshRate.Numerator = 60,
-    //        .BufferDesc.RefreshRate.Denominator = 1,
-    //        .SampleDesc.Count = 1,
-    //        .SampleDesc.Quality = 0,
-    //        .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-    //        .OutputWindow = midWindow.hWnd,
-    //        .Windowed = TRUE,
-    //        .BufferCount = 2,
-    //        .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
-    //        .Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT,
-    //    };
-    //    DX_REQUIRE(IDXGIFactory_CreateSwapChain(factory, (IUnknown*) render_device, &desc, &render_swapchain));
+    DXGI_SWAP_CHAIN_DESC desc = {
+        .BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+        .BufferDesc.RefreshRate.Numerator = 60,
+        .BufferDesc.RefreshRate.Denominator = 1,
+        .SampleDesc.Count = 1,
+        .SampleDesc.Quality = 0,
+        .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
+        .OutputWindow = midWindow.hWnd,
+        .Windowed = TRUE,
+        .BufferCount = 2,
+        .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+        .Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT,
+    };
+    DX_REQUIRE(IDXGIFactory_CreateSwapChain(factory, (IUnknown*) render_device, &desc, &render_swapchain));
   }
 
   {// CEF
-    if (argc == 0) {
-      printf("CEF version: %s\n", CEF_VERSION);
-    }
-
-    mxc_cef_app_t app = {};
-    initialize_cef_app(&app);
-
-    printf("cef_execute_process, argc=%d\n", argc);
-    cef_main_args_t main_args = {
-        .instance = GetModuleHandle(NULL),
-    };
-    int code = cef_execute_process(&main_args, (cef_app_t*) &app, NULL);
-    if (code >= 0) {
-      _exit(code);
-    }
-
     cef_settings_t settings = {
         .size = sizeof(cef_settings_t),
         .log_severity = LOGSEVERITY_WARNING,
