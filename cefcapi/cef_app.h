@@ -78,7 +78,7 @@ CEF_REF_CALLBACKS(app, mxc_cef_app_t);
 
 void initialize_cef_app(mxc_cef_app_t* app) {
   printf("initialize_cef_app\n");
-  app->cef.base.size = sizeof(cef_app_t);
+  app->cef.base.size = sizeof(mxc_cef_app_t);
 
   CEF_SET_REF_CALLBACKS(app, app);
 

@@ -41,7 +41,7 @@ CEF_REF_CALLBACKS(handler, mxc_cef_life_span_handler_t);
 
 void initialize_cef_life_span_handler(mxc_cef_life_span_handler_t* handler) {
     printf("initialize_cef_life_span_handler\n");
-    handler->cef.base.size = sizeof(cef_life_span_handler_t);
+    handler->cef.base.size = sizeof(mxc_cef_life_span_handler_t);
 
     CEF_SET_REF_CALLBACKS(handler, handler);
 

@@ -45,13 +45,23 @@
 #include "cef_base.h"
 #include "cef_client.h"
 #include "cef_life_span_handler.h"
+#include "cef_render_handler.h"
 
-mxc_cef_life_span_handler_t g_life_span_handler = {};
-
+#define MID_DEBUG
 [[noreturn]] void Panic(const char* file, const int line, const char* message) {
   fprintf(stderr, "\n%s:%d Error! %s\n", file, line, message);
   __builtin_trap();
 }
+#define PANIC(message) Panic(__FILE__, __LINE__, message)
+#define REQUIRE(condition, message)        \
+  if (__builtin_expect(!(condition), 0)) { \
+    PANIC(message);                        \
+  }
+
+#define MID_WINDOW_IMPLEMENTATION
+#include "mid_window.h"
+
+#define MID_WIN32_DEBUG
 [[noreturn]] void PanicWin32(const char* file, const int line, DWORD err) {
   fprintf(stderr, "\n%s:%d Error! ", file, line);
   LPWSTR err_str;
@@ -61,12 +71,7 @@ mxc_cef_life_span_handler_t g_life_span_handler = {};
   }
   __builtin_trap();
 }
-#define PANIC(message) Panic(__FILE__, __LINE__, message)
 #define PANIC_WIN32(err) PanicWin32(__FILE__, __LINE__, err)
-#define REQUIRE(condition, message)        \
-  if (__builtin_expect(!(condition), 0)) { \
-    PANIC(message);                        \
-  }
 #define REQUIRE_WIN32(condition, err)      \
   if (__builtin_expect(!(condition), 0)) { \
     PANIC_WIN32(err);                      \
@@ -77,10 +82,15 @@ mxc_cef_life_span_handler_t g_life_span_handler = {};
     REQUIRE_WIN32(SUCCEEDED(hr), hr); \
   }
 
+bool g_main_process;
+mxc_cef_life_span_handler_t g_life_span_handler = {};
+mxc_cef_render_handler_t g_cef_render_handler = {};
+
 int main(int argc, char* argv[]) {
 
   printf("\nProcess args: ");
   if (argc == 1) {
+    g_main_process = true;
     printf("none (Main process)");
   } else {
     for (int i = 1; i < argc; i++) {
@@ -92,7 +102,12 @@ int main(int argc, char* argv[]) {
   }
   printf("\n\n");
 
-  { // DX
+  if (g_main_process) {
+    // Test window
+    midCreateWindow();
+  }
+
+  {// DX
     IDXGISwapChain* render_swapchain;
     ID3D11Device* render_device;
     ID3D11DeviceContext* render_context;
@@ -104,27 +119,28 @@ int main(int argc, char* argv[]) {
     flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
     DX_REQUIRE(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, (const D3D_FEATURE_LEVEL[]){D3D_FEATURE_LEVEL_11_1}, 1, D3D11_SDK_VERSION, &render_device, &level, &render_context));
-    DX_REQUIRE(ID3D11DeviceContext_QueryInterface(render_context, &IID_ID3D11DeviceContext1,(void **) &render_context1));
+    DX_REQUIRE(ID3D11DeviceContext_QueryInterface(render_context, &IID_ID3D11DeviceContext1, (void**) &render_context1));
 
     IDXGIFactory* factory;
-    DX_REQUIRE(CreateDXGIFactory(&IID_IDXGIFactory,(void **) &factory));
+    DX_REQUIRE(CreateDXGIFactory(&IID_IDXGIFactory, (void**) &factory));
 
-//    DXGI_SWAP_CHAIN_DESC desc = {};
-//    desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-//    desc.BufferDesc.RefreshRate.Numerator = 60;
-//    desc.BufferDesc.RefreshRate.Denominator = 1;
-//    desc.SampleDesc.Count = 1;
-//    desc.SampleDesc.Quality = 0;
-//    desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-//    desc.OutputWindow = wnd;
-//    desc.Windowed = TRUE;
-//    desc.BufferCount = 2;
-//    desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-//    desc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
-
+    //    DXGI_SWAP_CHAIN_DESC desc = {
+    //        .BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+    //        .BufferDesc.RefreshRate.Numerator = 60,
+    //        .BufferDesc.RefreshRate.Denominator = 1,
+    //        .SampleDesc.Count = 1,
+    //        .SampleDesc.Quality = 0,
+    //        .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
+    //        .OutputWindow = midWindow.hWnd,
+    //        .Windowed = TRUE,
+    //        .BufferCount = 2,
+    //        .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+    //        .Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT,
+    //    };
+    //    DX_REQUIRE(IDXGIFactory_CreateSwapChain(factory, (IUnknown*) render_device, &desc, &render_swapchain));
   }
 
-  { // CEF
+  {// CEF
     if (argc == 0) {
       printf("CEF version: %s\n", CEF_VERSION);
     }
@@ -145,6 +161,7 @@ int main(int argc, char* argv[]) {
         .size = sizeof(cef_settings_t),
         .log_severity = LOGSEVERITY_WARNING,
         .no_sandbox = 1,
+        .windowless_rendering_enabled = 1,
     };
 
     printf("cef_initialize\n");
@@ -162,9 +179,9 @@ int main(int argc, char* argv[]) {
         .bounds.y = CW_USEDEFAULT,
         .bounds.width = CW_USEDEFAULT,
         .bounds.height = CW_USEDEFAULT,
-//        .windowless_rendering_enabled = 1,
-//        .shared_texture_enabled = 1,
-//        .external_begin_frame_enabled = 1,
+        .windowless_rendering_enabled = 1,
+        .shared_texture_enabled = 1,
+        //                .external_begin_frame_enabled = 1,
     };
 
     cef_browser_settings_t browser_settings = {
@@ -173,6 +190,8 @@ int main(int argc, char* argv[]) {
 
     mxc_cef_client_t client = {};
     initialize_cef_client(&client);
+
+    initialize_cef_render_handler(&g_cef_render_handler);
     initialize_cef_life_span_handler(&g_life_span_handler);
 
     char url[] = "https://www.google.com";

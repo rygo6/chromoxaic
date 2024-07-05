@@ -5,6 +5,7 @@
 
 #include "cef_base.h"
 #include "cef_life_span_handler.h"
+#include "cef_render_handler.h"
 #include "include/capi/cef_client_capi.h"
 
 typedef struct mxc_cef_client_t {
@@ -104,8 +105,7 @@ struct _cef_keyboard_handler_t* CEF_CALLBACK get_keyboard_handler(
 struct _cef_life_span_handler_t* CEF_CALLBACK get_life_span_handler(
     struct _cef_client_t* self) {
   DEBUG_CALLBACK("get_life_span_handler\n");
-  // Implemented!
-  return &g_life_span_handler;
+  return (struct _cef_life_span_handler_t*) &g_life_span_handler;
 }
 
 ///
@@ -120,10 +120,9 @@ struct _cef_load_handler_t* CEF_CALLBACK get_load_handler(
 ///
 // Return the handler for off-screen rendering events.
 ///
-struct _cef_render_handler_t* CEF_CALLBACK get_render_handler(
-    struct _cef_client_t* self) {
+struct _cef_render_handler_t* CEF_CALLBACK get_render_handler(struct _cef_client_t* self) {
   DEBUG_CALLBACK("get_render_handler\n");
-  return NULL;
+  return (struct _cef_render_handler_t*) &g_cef_render_handler;
 }
 
 ///
@@ -155,7 +154,7 @@ CEF_REF_CALLBACKS(client, mxc_cef_client_t);
 void initialize_cef_client(mxc_cef_client_t* client) {
   printf("initialize_client_handler\n");
 
-  client->cef.base.size = sizeof(cef_client_t);
+  client->cef.base.size = sizeof(mxc_cef_client_t);
 
   CEF_SET_REF_CALLBACKS(client, client);
 
