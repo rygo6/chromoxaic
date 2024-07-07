@@ -18,15 +18,15 @@ void CEF_CALLBACK get_view_rect(struct _cef_render_handler_t* self,
   rect->height = 1024;
 }
 
-void CEF_CALLBACK on_accelerated_paint(
-    struct _cef_render_handler_t* self,
-    struct _cef_browser_t* browser,
-    cef_paint_element_type_t type,
-    size_t dirtyRectsCount,
-    cef_rect_t const* dirtyRects,
-    const cef_accelerated_paint_info_t* info) {
-  printf("on_accelerated_paint\n");
-}
+//void CEF_CALLBACK on_accelerated_paint(
+//    struct _cef_render_handler_t* self,
+//    struct _cef_browser_t* browser,
+//    cef_paint_element_type_t type,
+//    size_t dirtyRectsCount,
+//    cef_rect_t const* dirtyRects,
+//    const cef_accelerated_paint_info_t* info) {
+//  printf("on_accelerated_paint\n");
+//}
 
 CEF_REF_CALLBACKS(render_handler, mxc_cef_render_handler_t);
 
@@ -35,5 +35,5 @@ void initialize_cef_render_handler(mxc_cef_render_handler_t* render_handler) {
   CEF_SET_REF_CALLBACKS(render_handler, render_handler);
   render_handler->cef.base.size = sizeof(mxc_cef_render_handler_t);
   render_handler->cef.get_view_rect = get_view_rect;
-  render_handler->cef.on_accelerated_paint = on_accelerated_paint;
+//  render_handler->cef.on_accelerated_paint = on_accelerated_paint;
 }

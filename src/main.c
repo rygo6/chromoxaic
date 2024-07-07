@@ -86,6 +86,48 @@ bool g_main_process;
 mxc_cef_life_span_handler_t g_life_span_handler = {};
 mxc_cef_render_handler_t g_cef_render_handler = {};
 
+
+IDXGISwapChain* render_swapchain;
+ID3D11Device* render_device;
+ID3D11Device1* render_device1;
+ID3D11DeviceContext* render_context;
+ID3D11DeviceContext1* render_context1;
+ID3D11RenderTargetView* render_window_rtview;
+HANDLE render_frame_latency_wait;
+
+void CEF_CALLBACK on_accelerated_paint(
+    struct _cef_render_handler_t* self,
+    struct _cef_browser_t* browser,
+    cef_paint_element_type_t type,
+    size_t dirtyRectsCount,
+    cef_rect_t const* dirtyRects,
+    const cef_accelerated_paint_info_t* info) {
+
+  midUpdateWindowInput();
+
+  float clear_color[4] = { 1.0f, 0.0f, 0.0f, 1.0f }; // Red color
+  ID3D11DeviceContext_ClearRenderTargetView(render_context, render_window_rtview, clear_color);
+
+  ID3D11Texture2D* tex;
+  ID3D11Device1_OpenSharedResource1(render_device1, info->shared_texture_handle, &IID_ID3D11Texture2D, (void**)&tex);
+  D3D11_TEXTURE2D_DESC td;
+  ID3D11Texture2D_GetDesc(tex, &td);
+
+//  D3D11_VIEWPORT vp = { 0.0f, 0.0f, (FLOAT)td.Width, (FLOAT)td.Height, 0.0f, 1.0f };
+//  ID3D11DeviceContext1_RSSetViewports(render_context1, 1, &vp);
+
+  ID3D11Texture2D* temp_window_buffer;
+  DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void **)&temp_window_buffer));
+  ID3D11DeviceContext1_CopyResource(render_context1, (ID3D11Resource *)temp_window_buffer, (ID3D11Resource *)tex);
+
+  IDXGISwapChain_Present(render_swapchain, 0, 0);
+
+//  WaitForSingleObjectEx(render_frame_latency_wait, INFINITE, TRUE);
+
+  printf("on_accelerated_paint\n");
+}
+
+
 int main(int argc, char* argv[]) {
 
   printf("\nProcess args: ");
@@ -114,24 +156,18 @@ int main(int argc, char* argv[]) {
   {// Test window
     midCreateWindow();
 
-    IDXGISwapChain* render_swapchain;
-    ID3D11Device* render_device;
-    ID3D11DeviceContext* render_context;
-    ID3D11DeviceContext1* render_context1;
-    D3D_FEATURE_LEVEL level;
+    D3D_FEATURE_LEVEL feature_levels[] = {D3D_FEATURE_LEVEL_11_1};
+    D3D_FEATURE_LEVEL feature_level;
 
-    UINT flags = 0;
-#ifdef _DEBUG
-    flags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-    DX_REQUIRE(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, (const D3D_FEATURE_LEVEL[]){D3D_FEATURE_LEVEL_11_1}, 1, D3D11_SDK_VERSION, &render_device, &level, &render_context));
+    UINT flags = D3D11_CREATE_DEVICE_DEBUG;
+    DX_REQUIRE(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, feature_levels, _countof(feature_levels), D3D11_SDK_VERSION, &render_device, &feature_level, &render_context));
+    DX_REQUIRE(ID3D11Device_QueryInterface(render_device, &IID_ID3D11Device1, (void**) &render_device1));
     DX_REQUIRE(ID3D11DeviceContext_QueryInterface(render_context, &IID_ID3D11DeviceContext1, (void**) &render_context1));
 
     IDXGIFactory* factory;
     DX_REQUIRE(CreateDXGIFactory(&IID_IDXGIFactory, (void**) &factory));
-
     DXGI_SWAP_CHAIN_DESC desc = {
-        .BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+        .BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM,
         .BufferDesc.RefreshRate.Numerator = 60,
         .BufferDesc.RefreshRate.Denominator = 1,
         .SampleDesc.Count = 1,
@@ -144,14 +180,43 @@ int main(int argc, char* argv[]) {
         .Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT,
     };
     DX_REQUIRE(IDXGIFactory_CreateSwapChain(factory, (IUnknown*) render_device, &desc, &render_swapchain));
+
+    IDXGISwapChain2* swapchain2;
+//    DX_REQUIRE(IDXGISwapChain_QueryInterface(render_swapchain, &IID_IDXGISwapChain2, (void**) &swapchain2));
+//    render_frame_latency_wait = IDXGISwapChain2_GetFrameLatencyWaitableObject(swapchain2);
+//    IDXGISwapChain2_Release(swapchain2);
+//    DX_REQUIRE(IDXGIFactory_MakeWindowAssociation(factory, midWindow.hWnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER));
+
+    IDXGIFactory_Release(factory);
+
+    ID3D11Texture2D* temp_window_buffer;
+    DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void **)&temp_window_buffer));
+    DX_REQUIRE(ID3D11Device_CreateRenderTargetView(render_device, (ID3D11Resource*)temp_window_buffer, NULL, &render_window_rtview));
+    ID3D11Texture2D_Release(temp_window_buffer);
+
+    ShowWindow(midWindow.hWnd, SW_SHOWDEFAULT);
+    UpdateWindow(midWindow.hWnd);
   }
 
   {// CEF
+
+    char exe_path[MAX_PATH];
+    REQUIRE(GetModuleFileName(NULL, exe_path, MAX_PATH), "Couldn't get exe path");
+    char* last_slash = strrchr(exe_path, '\\');
+    if (last_slash != NULL) *last_slash = '\0';
+    printf("Executable directory: %s\n", exe_path);
+    const char* cache_folder = "\\cache";
+    char root_cache_path[MAX_PATH + strlen(cache_folder)];
+    sprintf(root_cache_path, "%s%s", exe_path, cache_folder);
+    printf("Cache directory: %s\n", root_cache_path);
+    cef_string_t cef_root_cache_path = {};
+    cef_string_utf8_to_utf16(root_cache_path, strlen(root_cache_path), &cef_root_cache_path);
     cef_settings_t settings = {
         .size = sizeof(cef_settings_t),
         .log_severity = LOGSEVERITY_WARNING,
         .no_sandbox = 1,
         .windowless_rendering_enabled = 1,
+        .root_cache_path = cef_root_cache_path,
     };
 
     printf("cef_initialize\n");
@@ -165,10 +230,10 @@ int main(int argc, char* argv[]) {
         .window_name = cef_window_name,
         .style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         .parent_window = NULL,
-        .bounds.x = CW_USEDEFAULT,
-        .bounds.y = CW_USEDEFAULT,
-        .bounds.width = CW_USEDEFAULT,
-        .bounds.height = CW_USEDEFAULT,
+        .bounds.x = 0,
+        .bounds.y = 0,
+        .bounds.width = DEFAULT_WIDTH,
+        .bounds.height = DEFAULT_HEIGHT,
         .windowless_rendering_enabled = 1,
         .shared_texture_enabled = 1,
         //                .external_begin_frame_enabled = 1,
@@ -181,6 +246,7 @@ int main(int argc, char* argv[]) {
     mxc_cef_client_t client = {};
     initialize_cef_client(&client);
 
+    g_cef_render_handler.cef.on_accelerated_paint = on_accelerated_paint;
     initialize_cef_render_handler(&g_cef_render_handler);
     initialize_cef_life_span_handler(&g_life_span_handler);
 

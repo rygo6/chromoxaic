@@ -184,6 +184,7 @@ void midUpdateWindowInput() {
 void midCreateWindow() {
   REQUIRE(midWindow.hInstance == NULL, "Window already created!");
   midWindow.hInstance = GetModuleHandle(NULL);
+  midWindow.running = true;
   const DWORD    windowStyle = WS_OVERLAPPEDWINDOW;
   const WNDCLASS wc = {.lpfnWndProc = WindowProc, .hInstance = midWindow.hInstance, .lpszClassName = CLASS_NAME};
   RegisterClass(&wc);
