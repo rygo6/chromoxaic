@@ -3,6 +3,7 @@
 
 #include "cef_base.h"
 #include "include/capi/cef_app_capi.h"
+#include "include/capi/cef_browser_process_handler_capi.h"
 #include <stdbool.h>
 
 //

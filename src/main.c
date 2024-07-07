@@ -247,7 +247,7 @@ int main(int argc, char* argv[]) {
         .bounds.height = DEFAULT_HEIGHT,
         .windowless_rendering_enabled = 1,
         .shared_texture_enabled = 1,
-        //                .external_begin_frame_enabled = 1,
+        .external_begin_frame_enabled = 1,
     };
 
     cef_browser_settings_t browser_settings = {
@@ -268,21 +268,24 @@ int main(int argc, char* argv[]) {
     cef_string_utf8_to_utf16(url, strlen(url), &cef_url);
 
     printf("cef_browser_host_create_browser\n");
-    cef_browser_host_create_browser(&window_info, (struct _cef_client_t*) &client, &cef_url, &browser_settings, NULL, NULL);
+    cef_browser_t* browser = cef_browser_host_create_browser_sync(&window_info, (struct _cef_client_t*) &client, &cef_url, &browser_settings, NULL, NULL);
+    cef_browser_host_t* browser_host = browser->get_host(browser);
 
     printf("cef_run_message_loop\n");
     //    cef_run_message_loop();
 
     while (midWindow.running) {
+
       midUpdateWindowInput();
 
-      int work_count = __atomic_fetch_sub(&g_cef_browser_process_handler.schedule_message_pump_work, 1, __ATOMIC_RELAXED);
+      int work_count;
+      __atomic_load(&g_cef_browser_process_handler.schedule_message_pump_work, &work_count, __ATOMIC_RELAXED);
       while (work_count > 0) {
         cef_do_message_loop_work();
-
-        if (work_count > 1)
-          work_count = __atomic_fetch_sub(&g_cef_browser_process_handler.schedule_message_pump_work, 1, __ATOMIC_RELAXED);
+        work_count = __atomic_sub_fetch(&g_cef_browser_process_handler.schedule_message_pump_work, 1, __ATOMIC_RELAXED);
       }
+
+      browser_host->send_external_begin_frame(browser_host);
 
       usleep((useconds_t) ((1.0f / 30.0f) * 1000000.0f));
       printf("loop %d\n", work_count);
