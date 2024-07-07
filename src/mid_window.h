@@ -99,54 +99,54 @@ MidWindow midWindow;
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   switch (uMsg) {
-    case WM_MOUSEMOVE:
-      if (midWindowInput.mouseLocked) {
-        midWindowInput.mouseDeltaX = (float)(GET_X_LPARAM(lParam) - midWindow.localCenter.x);
-        midWindowInput.mouseDeltaY = (float)(GET_Y_LPARAM(lParam) - midWindow.localCenter.y);
-        SetCursorPos(midWindow.globalCenter.x, midWindow.globalCenter.y);
-      }
-      return 0;
-    case WM_LBUTTONDOWN:
-      ShowCursor(FALSE);
-      SetCapture(midWindow.hWnd);
-      RECT rect;
-      GetClientRect(midWindow.hWnd, &rect);
-      midWindow.globalCenter = midWindow.localCenter = (POINT){(rect.right - rect.left) / 2, (rect.bottom - rect.top) / 2};
-      ClientToScreen(midWindow.hWnd, (POINT*)&midWindow.globalCenter);
-      SetCursorPos(midWindow.globalCenter.x, midWindow.globalCenter.y);
-      midWindowInput.mouseLocked = true;
-      return 0;
-    case WM_LBUTTONUP:
-      ShowCursor(TRUE);
-      ReleaseCapture();
-      midWindowInput.mouseLocked = false;
-      return 0;
-    case WM_KEYDOWN:
-      switch (wParam) {
-        case 'W':
-          midWindowInput.moveForward = true; return 0;
-        case 'S':
-          midWindowInput.moveBack = true; return 0;
-        case 'D':
-          midWindowInput.moveRight = true; return 0;
-        case 'A':
-          midWindowInput.moveLeft = true; return 0;
-        case 'Z':
-          midWindowInput.debugSwap = !midWindowInput.debugSwap; return 0;
-        default:  return 0;
-      }
-    case WM_KEYUP:
-      switch (wParam) {
-        case 'W':
-          midWindowInput.moveForward = false; return 0;
-        case 'S':
-          midWindowInput.moveBack = false; return 0;
-        case 'D':
-          midWindowInput.moveRight = false; return 0;
-        case 'A':
-          midWindowInput.moveLeft = false; return 0;
-        default:  return 0;
-      }
+//    case WM_MOUSEMOVE:
+//      if (midWindowInput.mouseLocked) {
+//        midWindowInput.mouseDeltaX = (float)(GET_X_LPARAM(lParam) - midWindow.localCenter.x);
+//        midWindowInput.mouseDeltaY = (float)(GET_Y_LPARAM(lParam) - midWindow.localCenter.y);
+//        SetCursorPos(midWindow.globalCenter.x, midWindow.globalCenter.y);
+//      }
+//      return 0;
+//    case WM_LBUTTONDOWN:
+//      ShowCursor(FALSE);
+//      SetCapture(midWindow.hWnd);
+//      RECT rect;
+//      GetClientRect(midWindow.hWnd, &rect);
+//      midWindow.globalCenter = midWindow.localCenter = (POINT){(rect.right - rect.left) / 2, (rect.bottom - rect.top) / 2};
+//      ClientToScreen(midWindow.hWnd, (POINT*)&midWindow.globalCenter);
+//      SetCursorPos(midWindow.globalCenter.x, midWindow.globalCenter.y);
+//      midWindowInput.mouseLocked = true;
+//      return 0;
+//    case WM_LBUTTONUP:
+//      ShowCursor(TRUE);
+//      ReleaseCapture();
+//      midWindowInput.mouseLocked = false;
+//      return 0;
+//    case WM_KEYDOWN:
+//      switch (wParam) {
+//        case 'W':
+//          midWindowInput.moveForward = true; return 0;
+//        case 'S':
+//          midWindowInput.moveBack = true; return 0;
+//        case 'D':
+//          midWindowInput.moveRight = true; return 0;
+//        case 'A':
+//          midWindowInput.moveLeft = true; return 0;
+//        case 'Z':
+//          midWindowInput.debugSwap = !midWindowInput.debugSwap; return 0;
+//        default:  return 0;
+//      }
+//    case WM_KEYUP:
+//      switch (wParam) {
+//        case 'W':
+//          midWindowInput.moveForward = false; return 0;
+//        case 'S':
+//          midWindowInput.moveBack = false; return 0;
+//        case 'D':
+//          midWindowInput.moveRight = false; return 0;
+//        case 'A':
+//          midWindowInput.moveLeft = false; return 0;
+//        default:  return 0;
+//      }
     case WM_CLOSE:
       midWindow.running = false;
       PostQuitMessage(0);

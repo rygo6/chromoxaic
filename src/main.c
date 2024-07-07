@@ -82,8 +82,8 @@
     REQUIRE_WIN32(SUCCEEDED(hr), hr); \
   }
 
-bool g_main_process;
 mxc_cef_life_span_handler_t g_life_span_handler = {};
+mxc_cef_browser_process_handler_t g_cef_browser_process_handler = {};
 mxc_cef_render_handler_t g_cef_render_handler = {};
 
 
@@ -95,6 +95,17 @@ ID3D11DeviceContext1* render_context1;
 ID3D11RenderTargetView* render_window_rtview;
 HANDLE render_frame_latency_wait;
 
+void CEF_CALLBACK on_paint(struct _cef_render_handler_t* self,
+                           struct _cef_browser_t* browser,
+                           cef_paint_element_type_t type,
+                           size_t dirtyRectsCount,
+                           cef_rect_t const* dirtyRects,
+                           const void* buffer,
+                           int width,
+                           int height) {
+  printf("on_paint\n");
+}
+
 void CEF_CALLBACK on_accelerated_paint(
     struct _cef_render_handler_t* self,
     struct _cef_browser_t* browser,
@@ -103,26 +114,24 @@ void CEF_CALLBACK on_accelerated_paint(
     cef_rect_t const* dirtyRects,
     const cef_accelerated_paint_info_t* info) {
 
-  midUpdateWindowInput();
-
-  float clear_color[4] = { 1.0f, 0.0f, 0.0f, 1.0f }; // Red color
+  float clear_color[4] = {1.0f, 0.0f, 0.0f, 1.0f};// Red color
   ID3D11DeviceContext_ClearRenderTargetView(render_context, render_window_rtview, clear_color);
 
   ID3D11Texture2D* tex;
-  ID3D11Device1_OpenSharedResource1(render_device1, info->shared_texture_handle, &IID_ID3D11Texture2D, (void**)&tex);
+  ID3D11Device1_OpenSharedResource1(render_device1, info->shared_texture_handle, &IID_ID3D11Texture2D, (void**) &tex);
   D3D11_TEXTURE2D_DESC td;
   ID3D11Texture2D_GetDesc(tex, &td);
 
-//  D3D11_VIEWPORT vp = { 0.0f, 0.0f, (FLOAT)td.Width, (FLOAT)td.Height, 0.0f, 1.0f };
-//  ID3D11DeviceContext1_RSSetViewports(render_context1, 1, &vp);
+  //  D3D11_VIEWPORT vp = { 0.0f, 0.0f, (FLOAT)td.Width, (FLOAT)td.Height, 0.0f, 1.0f };
+  //  ID3D11DeviceContext1_RSSetViewports(render_context1, 1, &vp);
 
   ID3D11Texture2D* temp_window_buffer;
-  DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void **)&temp_window_buffer));
-  ID3D11DeviceContext1_CopyResource(render_context1, (ID3D11Resource *)temp_window_buffer, (ID3D11Resource *)tex);
+  DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void**) &temp_window_buffer));
+  ID3D11DeviceContext1_CopyResource(render_context1, (ID3D11Resource*) temp_window_buffer, (ID3D11Resource*) tex);
 
   IDXGISwapChain_Present(render_swapchain, 0, 0);
 
-//  WaitForSingleObjectEx(render_frame_latency_wait, INFINITE, TRUE);
+  //  WaitForSingleObjectEx(render_frame_latency_wait, INFINITE, TRUE);
 
   printf("on_accelerated_paint\n");
 }
@@ -182,16 +191,16 @@ int main(int argc, char* argv[]) {
     DX_REQUIRE(IDXGIFactory_CreateSwapChain(factory, (IUnknown*) render_device, &desc, &render_swapchain));
 
     IDXGISwapChain2* swapchain2;
-//    DX_REQUIRE(IDXGISwapChain_QueryInterface(render_swapchain, &IID_IDXGISwapChain2, (void**) &swapchain2));
-//    render_frame_latency_wait = IDXGISwapChain2_GetFrameLatencyWaitableObject(swapchain2);
-//    IDXGISwapChain2_Release(swapchain2);
-//    DX_REQUIRE(IDXGIFactory_MakeWindowAssociation(factory, midWindow.hWnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER));
+    //    DX_REQUIRE(IDXGISwapChain_QueryInterface(render_swapchain, &IID_IDXGISwapChain2, (void**) &swapchain2));
+    //    render_frame_latency_wait = IDXGISwapChain2_GetFrameLatencyWaitableObject(swapchain2);
+    //    IDXGISwapChain2_Release(swapchain2);
+    //    DX_REQUIRE(IDXGIFactory_MakeWindowAssociation(factory, midWindow.hWnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER));
 
     IDXGIFactory_Release(factory);
 
     ID3D11Texture2D* temp_window_buffer;
-    DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void **)&temp_window_buffer));
-    DX_REQUIRE(ID3D11Device_CreateRenderTargetView(render_device, (ID3D11Resource*)temp_window_buffer, NULL, &render_window_rtview));
+    DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void**) &temp_window_buffer));
+    DX_REQUIRE(ID3D11Device_CreateRenderTargetView(render_device, (ID3D11Resource*) temp_window_buffer, NULL, &render_window_rtview));
     ID3D11Texture2D_Release(temp_window_buffer);
 
     ShowWindow(midWindow.hWnd, SW_SHOWDEFAULT);
@@ -216,6 +225,8 @@ int main(int argc, char* argv[]) {
         .log_severity = LOGSEVERITY_WARNING,
         .no_sandbox = 1,
         .windowless_rendering_enabled = 1,
+        .multi_threaded_message_loop = 0,
+        .external_message_pump = 1,
         .root_cache_path = cef_root_cache_path,
     };
 
@@ -241,12 +252,14 @@ int main(int argc, char* argv[]) {
 
     cef_browser_settings_t browser_settings = {
         .size = sizeof(cef_browser_settings_t),
+        .windowless_frame_rate = 30,
     };
 
     mxc_cef_client_t client = {};
     initialize_cef_client(&client);
 
     g_cef_render_handler.cef.on_accelerated_paint = on_accelerated_paint;
+    g_cef_render_handler.cef.on_paint = on_paint;
     initialize_cef_render_handler(&g_cef_render_handler);
     initialize_cef_life_span_handler(&g_life_span_handler);
 
@@ -258,7 +271,22 @@ int main(int argc, char* argv[]) {
     cef_browser_host_create_browser(&window_info, (struct _cef_client_t*) &client, &cef_url, &browser_settings, NULL, NULL);
 
     printf("cef_run_message_loop\n");
-    cef_run_message_loop();
+    //    cef_run_message_loop();
+
+    while (midWindow.running) {
+      midUpdateWindowInput();
+
+      int work_count = __atomic_fetch_sub(&g_cef_browser_process_handler.schedule_message_pump_work, 1, __ATOMIC_RELAXED);
+      while (work_count > 0) {
+        cef_do_message_loop_work();
+
+        if (work_count > 1)
+          work_count = __atomic_fetch_sub(&g_cef_browser_process_handler.schedule_message_pump_work, 1, __ATOMIC_RELAXED);
+      }
+
+      usleep((useconds_t) ((1.0f / 30.0f) * 1000000.0f));
+      printf("loop %d\n", work_count);
+    }
 
     printf("cef_shutdown\n");
     cef_shutdown();

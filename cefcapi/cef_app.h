@@ -1,20 +1,43 @@
-// CEF C API example
-// Project website: https://github.com/cztomczak/cefcapi
 
 #pragma once
 
 #include "cef_base.h"
 #include "include/capi/cef_app_capi.h"
+#include <stdbool.h>
 
+//
+//// browser_process_handler
+typedef struct mxc_cef_browser_process_handler_t {
+  cef_browser_process_handler_t cef;
+  int schedule_message_pump_work;
+  int ref_count;
+} mxc_cef_browser_process_handler_t;
+
+extern mxc_cef_browser_process_handler_t g_cef_browser_process_handler;
+
+void CEF_CALLBACK on_schedule_message_pump_work(
+    struct _cef_browser_process_handler_t* self,
+    int64_t delay_ms) {
+  printf("on_schedule_message_pump_work %lld\n", delay_ms);
+  __atomic_fetch_add(&(((mxc_cef_browser_process_handler_t*)self)->schedule_message_pump_work), 1, __ATOMIC_RELAXED);
+}
+
+CEF_REF_CALLBACKS(browser_process_handler, mxc_cef_browser_process_handler_t);
+
+void initialize_cef_browser_process_handler(mxc_cef_browser_process_handler_t* browser_process_handler) {
+  printf("initialize_cef_browser_process_handler\n");
+
+  CEF_SET_REF_CALLBACKS(browser_process_handler, browser_process_handler);
+  browser_process_handler->cef.base.size = sizeof(mxc_cef_browser_process_handler_t);
+  browser_process_handler->cef.on_schedule_message_pump_work = on_schedule_message_pump_work;
+}
+
+//
+//// app
 typedef struct mxc_cef_app_t {
   cef_app_t cef;
   int ref_count;
 } mxc_cef_app_t;
-
-///
-// Implement this structure to provide handler implementations. Methods will be
-// called by the process and/or thread indicated.
-///
 
 ///
 // Provides an opportunity to view and/or modify command-line arguments before
@@ -62,7 +85,7 @@ struct _cef_resource_bundle_handler_t* CEF_CALLBACK get_resource_bundle_handler(
 ///
 struct _cef_browser_process_handler_t* CEF_CALLBACK get_browser_process_handler(struct _cef_app_t* self) {
   DEBUG_CALLBACK("get_browser_process_handler\n");
-  return NULL;
+  return (struct _cef_browser_process_handler_t*) &g_cef_browser_process_handler;
 }
 
 ///
@@ -78,13 +101,15 @@ CEF_REF_CALLBACKS(app, mxc_cef_app_t);
 
 void initialize_cef_app(mxc_cef_app_t* app) {
   printf("initialize_cef_app\n");
-  app->cef.base.size = sizeof(mxc_cef_app_t);
+
+  initialize_cef_browser_process_handler(&g_cef_browser_process_handler);
 
   CEF_SET_REF_CALLBACKS(app, app);
-
+  app->cef.base.size = sizeof(mxc_cef_app_t);
   app->cef.on_before_command_line_processing = on_before_command_line_processing;
   app->cef.on_register_custom_schemes = on_register_custom_schemes;
   app->cef.get_resource_bundle_handler = get_resource_bundle_handler;
   app->cef.get_browser_process_handler = get_browser_process_handler;
+  app->cef.get_render_process_handler = get_render_process_handler;
   app->cef.get_render_process_handler = get_render_process_handler;
 }
