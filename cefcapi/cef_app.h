@@ -19,7 +19,7 @@ extern mxc_cef_browser_process_handler_t g_cef_browser_process_handler;
 void CEF_CALLBACK on_schedule_message_pump_work(
     struct _cef_browser_process_handler_t* self,
     int64_t delay_ms) {
-  printf("on_schedule_message_pump_work %lld\n", delay_ms);
+//  printf("on_schedule_message_pump_work %lld\n", delay_ms);
   __atomic_fetch_add(&(((mxc_cef_browser_process_handler_t*)self)->schedule_message_pump_work), 1, __ATOMIC_RELAXED);
 }
 

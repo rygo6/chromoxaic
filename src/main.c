@@ -103,7 +103,7 @@ void CEF_CALLBACK on_paint(struct _cef_render_handler_t* self,
                            const void* buffer,
                            int width,
                            int height) {
-  printf("on_paint\n");
+  PANIC("on_paint is not supposed to be called");
 }
 
 void CEF_CALLBACK on_accelerated_paint(
@@ -132,8 +132,6 @@ void CEF_CALLBACK on_accelerated_paint(
   IDXGISwapChain_Present(render_swapchain, 0, 0);
 
   //  WaitForSingleObjectEx(render_frame_latency_wait, INFINITE, TRUE);
-
-  printf("on_accelerated_paint\n");
 }
 
 
@@ -278,6 +276,21 @@ int main(int argc, char* argv[]) {
 
       midUpdateWindowInput();
 
+      const cef_mouse_event_t mouse_event = {
+          .x = midWindowInput.mouseX,
+          .y = midWindowInput.mouseY,
+      };
+      browser_host->send_mouse_move_event(browser_host, &mouse_event, false);
+
+      switch (midWindowInput.leftMouse) {
+        case MID_PHASE_PRESS:
+          browser_host->send_mouse_click_event(browser_host, &mouse_event, MBT_LEFT, false, 1);
+          break;
+        case MID_PHASE_RELEASE:
+          browser_host->send_mouse_click_event(browser_host, &mouse_event, MBT_LEFT, true, 1);
+          break;
+      }
+
       int work_count;
       __atomic_load(&g_cef_browser_process_handler.schedule_message_pump_work, &work_count, __ATOMIC_RELAXED);
       while (work_count > 0) {
@@ -287,8 +300,7 @@ int main(int argc, char* argv[]) {
 
       browser_host->send_external_begin_frame(browser_host);
 
-      usleep((useconds_t) ((1.0f / 30.0f) * 1000000.0f));
-      printf("loop %d\n", work_count);
+      usleep((useconds_t) ((1.0f / 60.0f) * 1000000.0f));
     }
 
     printf("cef_shutdown\n");
