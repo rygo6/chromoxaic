@@ -59,6 +59,7 @@
   }
 
 #define MID_WINDOW_IMPLEMENTATION
+#include "cef_permission_handler.h"
 #include "mid_window.h"
 
 #define MID_WIN32_DEBUG
@@ -83,8 +84,9 @@
   }
 
 mxc_cef_life_span_handler_t g_life_span_handler = {};
-mxc_cef_browser_process_handler_t g_cef_browser_process_handler = {};
-mxc_cef_render_handler_t g_cef_render_handler = {};
+mxc_cef_browser_process_handler_t g_browser_process_handler = {};
+mxc_cef_render_handler_t g_render_handler = {};
+mxc_cef_permission_handler_t g_permission_handler = {};
 
 
 IDXGISwapChain* render_swapchain;
@@ -95,8 +97,8 @@ ID3D11DeviceContext1* render_context1;
 ID3D11RenderTargetView* render_window_rtview;
 HANDLE render_frame_latency_wait;
 
-void CEF_CALLBACK on_paint(struct _cef_render_handler_t* self,
-                           struct _cef_browser_t* browser,
+void CEF_CALLBACK on_paint(cef_render_handler_t* self,
+                           cef_browser_t* browser,
                            cef_paint_element_type_t type,
                            size_t dirtyRectsCount,
                            cef_rect_t const* dirtyRects,
@@ -107,8 +109,8 @@ void CEF_CALLBACK on_paint(struct _cef_render_handler_t* self,
 }
 
 void CEF_CALLBACK on_accelerated_paint(
-    struct _cef_render_handler_t* self,
-    struct _cef_browser_t* browser,
+    cef_render_handler_t* self,
+    cef_browser_t* browser,
     cef_paint_element_type_t type,
     size_t dirtyRectsCount,
     cef_rect_t const* dirtyRects,
@@ -253,15 +255,16 @@ int main(int argc, char* argv[]) {
         .windowless_frame_rate = 30,
     };
 
-    mxc_cef_client_t client = {};
+    mxc_cef_client_t client = {}; // handler refs need to go on client
     initialize_cef_client(&client);
 
-    g_cef_render_handler.cef.on_accelerated_paint = on_accelerated_paint;
-    g_cef_render_handler.cef.on_paint = on_paint;
-    initialize_cef_render_handler(&g_cef_render_handler);
+    g_render_handler.cef.on_accelerated_paint = on_accelerated_paint;
+    g_render_handler.cef.on_paint = on_paint;
+    initialize_cef_render_handler(&g_render_handler);
     initialize_cef_life_span_handler(&g_life_span_handler);
+    initialize_cef_permission_handler_t(&g_permission_handler);
 
-    char url[] = "https://www.google.com";
+    char url[] = "https://immersive-web.github.io/webxr-samples/";
     cef_string_t cef_url = {};
     cef_string_utf8_to_utf16(url, strlen(url), &cef_url);
 
@@ -292,10 +295,10 @@ int main(int argc, char* argv[]) {
       }
 
       int work_count;
-      __atomic_load(&g_cef_browser_process_handler.schedule_message_pump_work, &work_count, __ATOMIC_RELAXED);
+      __atomic_load(&g_browser_process_handler.schedule_message_pump_work, &work_count, __ATOMIC_RELAXED);
       while (work_count > 0) {
         cef_do_message_loop_work();
-        work_count = __atomic_sub_fetch(&g_cef_browser_process_handler.schedule_message_pump_work, 1, __ATOMIC_RELAXED);
+        work_count = __atomic_sub_fetch(&g_browser_process_handler.schedule_message_pump_work, 1, __ATOMIC_RELAXED);
       }
 
       browser_host->send_external_begin_frame(browser_host);

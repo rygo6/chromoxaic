@@ -8,10 +8,10 @@ typedef struct mxc_cef_render_handler_t {
   int ref_count;
 } mxc_cef_render_handler_t;
 
-extern mxc_cef_render_handler_t g_cef_render_handler;
+extern mxc_cef_render_handler_t g_render_handler;
 
-void CEF_CALLBACK get_view_rect(struct _cef_render_handler_t* self,
-                                struct _cef_browser_t* browser,
+void CEF_CALLBACK get_view_rect(cef_render_handler_t* self,
+                                cef_browser_t* browser,
                                 cef_rect_t* rect) {
   printf("get_view_rect\n");
   rect->width = 1024;
