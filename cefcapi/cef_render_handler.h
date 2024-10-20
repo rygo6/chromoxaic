@@ -28,11 +28,13 @@ void CEF_CALLBACK get_view_rect(cef_render_handler_t* self,
 //  printf("on_accelerated_paint\n");
 //}
 
-CEF_REF_CALLBACKS(render_handler, mxc_cef_render_handler_t);
+//MID_DECLARE_CEF_REF_COUNT_CALLBACKS2(render_handler, mxc_cef_render_handler_t);
 
 void initialize_cef_render_handler(mxc_cef_render_handler_t* render_handler) {
   printf("initialize_cef_render_handler\n");
-  CEF_SET_REF_CALLBACKS(render_handler, render_handler);
+
+//  MID_SET_CEF_REF_COUNT_CALLBACKS2(render_handler, render_handler);
+
   render_handler->cef.base.size = sizeof(mxc_cef_render_handler_t);
   render_handler->cef.get_view_rect = get_view_rect;
 //  render_handler->cef.on_accelerated_paint = on_accelerated_paint;

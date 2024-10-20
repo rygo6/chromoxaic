@@ -1,6 +1,10 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 #ifdef MID_WINDOW_VULKAN
 #include <vulkan/vulkan.h>
@@ -64,8 +68,6 @@ typedef struct MidWindowInput {
   MidPhase keyChar['Z' - '0'];
 
   double deltaTime;
-
-  bool debugSwap;
 
 } MidWindowInput;
 
@@ -163,7 +165,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
     case WM_CLOSE:
       midWindow.running = false;
-      PostQuitMessage(0);
       return 0;
     default:
       return DefWindowProc(hWnd, uMsg, wParam, lParam);

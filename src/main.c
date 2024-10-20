@@ -38,9 +38,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include <include/cef_version.h>
 
+#define MID_CEF_IMPLEMENTATION
 #include "cef_app.h"
 #include "cef_base.h"
 #include "cef_client.h"
@@ -84,7 +86,6 @@
   }
 
 mxc_cef_life_span_handler_t g_life_span_handler = {};
-mxc_cef_browser_process_handler_t g_browser_process_handler = {};
 mxc_cef_render_handler_t g_render_handler = {};
 mxc_cef_permission_handler_t g_permission_handler = {};
 
@@ -152,7 +153,7 @@ int main(int argc, char* argv[]) {
       }
   }
 
-  mxc_cef_app_t app = {};
+  cef_app_t app = {};
   initialize_cef_app(&app);
 
   printf("cef_execute_process, argc=%d\n", argc);
@@ -269,11 +270,12 @@ int main(int argc, char* argv[]) {
     cef_string_utf8_to_utf16(url, strlen(url), &cef_url);
 
     printf("cef_browser_host_create_browser\n");
+
+    assert(cef_currently_on(TID_UI));
     cef_browser_t* browser = cef_browser_host_create_browser_sync(&window_info, (struct _cef_client_t*) &client, &cef_url, &browser_settings, NULL, NULL);
     cef_browser_host_t* browser_host = browser->get_host(browser);
 
-    printf("cef_run_message_loop\n");
-    //    cef_run_message_loop();
+    const useconds_t frame_rate = (useconds_t) ((1.0f / 60.0f) * 1000000.0f);
 
     while (midWindow.running) {
 
@@ -295,15 +297,21 @@ int main(int argc, char* argv[]) {
       }
 
       int work_count;
-      __atomic_load(&g_browser_process_handler.schedule_message_pump_work, &work_count, __ATOMIC_RELAXED);
+      __atomic_load(&schedule_message_pump_work, &work_count, __ATOMIC_RELAXED);
       while (work_count > 0) {
         cef_do_message_loop_work();
-        work_count = __atomic_sub_fetch(&g_browser_process_handler.schedule_message_pump_work, 1, __ATOMIC_RELAXED);
+        work_count = __atomic_sub_fetch(&schedule_message_pump_work, 1, __ATOMIC_RELAXED);
       }
 
       browser_host->send_external_begin_frame(browser_host);
 
-      usleep((useconds_t) ((1.0f / 60.0f) * 1000000.0f));
+      usleep(frame_rate);
+    }
+
+    bool closed = false;
+    while (!closed) {
+      closed = browser_host->try_close_browser(browser_host);
+      cef_do_message_loop_work();
     }
 
     printf("cef_shutdown\n");

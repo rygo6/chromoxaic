@@ -86,14 +86,14 @@ int CEF_CALLBACK on_process_message_received(
   return 0;
 }
 
-CEF_REF_CALLBACKS(client, mxc_cef_client_t);
+MID_DECLARE_CEF_REF_COUNT_CALLBACKS2(client, mxc_cef_client_t);
 
 void initialize_cef_client(mxc_cef_client_t* client) {
   printf("initialize_client_handler\n");
 
   client->cef.base.size = sizeof(mxc_cef_client_t);
 
-  CEF_SET_REF_CALLBACKS(client, client);
+  MID_SET_CEF_REF_COUNT_CALLBACKS2(client, client);
 
   client->cef.get_context_menu_handler = get_context_menu_handler;
   client->cef.get_dialog_handler = get_dialog_handler;
