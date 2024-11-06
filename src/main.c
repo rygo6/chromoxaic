@@ -166,16 +166,27 @@ int main(int argc, char* argv[]) {
   {// Test window
     midCreateWindow();
 
+    IDXGIFactory* factory = NULL;
+    DX_REQUIRE(CreateDXGIFactory1(&IID_IDXGIFactory, (void**)&factory));
+
+    IDXGIAdapter* adapter = NULL;
+    for (UINT i = 0; IDXGIFactory_EnumAdapters(factory, i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i) {
+      DXGI_ADAPTER_DESC desc;
+      DX_REQUIRE(IDXGIAdapter_GetDesc(adapter, &desc));
+      wprintf(L"DX11 Adapter %d Name: %ls LUID: %ld:%lu\n", i, desc.Description, desc.AdapterLuid.HighPart, desc.AdapterLuid.LowPart);
+      break;
+    }
+
     D3D_FEATURE_LEVEL feature_levels[] = {D3D_FEATURE_LEVEL_11_1};
     D3D_FEATURE_LEVEL feature_level;
 
     UINT flags = D3D11_CREATE_DEVICE_DEBUG;
-    DX_REQUIRE(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, feature_levels, _countof(feature_levels), D3D11_SDK_VERSION, &render_device, &feature_level, &render_context));
-    DX_REQUIRE(ID3D11Device_QueryInterface(render_device, &IID_ID3D11Device1, (void**) &render_device1));
-    DX_REQUIRE(ID3D11DeviceContext_QueryInterface(render_context, &IID_ID3D11DeviceContext1, (void**) &render_context1));
+    DX_REQUIRE(D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, flags, feature_levels, _countof(feature_levels), D3D11_SDK_VERSION, &render_device, &feature_level, &render_context))
+    DX_REQUIRE(ID3D11Device_QueryInterface(render_device, &IID_ID3D11Device1, (void**) &render_device1))
+    DX_REQUIRE(ID3D11DeviceContext_QueryInterface(render_context, &IID_ID3D11DeviceContext1, (void**) &render_context1))
 
-    IDXGIFactory* factory;
-    DX_REQUIRE(CreateDXGIFactory(&IID_IDXGIFactory, (void**) &factory));
+    printf("D3D11 Device: %p\n", render_device);
+
     DXGI_SWAP_CHAIN_DESC desc = {
         .BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM,
         .BufferDesc.RefreshRate.Numerator = 60,
@@ -189,7 +200,7 @@ int main(int argc, char* argv[]) {
         .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
         .Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT,
     };
-    DX_REQUIRE(IDXGIFactory_CreateSwapChain(factory, (IUnknown*) render_device, &desc, &render_swapchain));
+    DX_REQUIRE(IDXGIFactory_CreateSwapChain(factory, (IUnknown*) render_device, &desc, &render_swapchain))
 
     IDXGISwapChain2* swapchain2;
     //    DX_REQUIRE(IDXGISwapChain_QueryInterface(render_swapchain, &IID_IDXGISwapChain2, (void**) &swapchain2));
@@ -200,8 +211,8 @@ int main(int argc, char* argv[]) {
     IDXGIFactory_Release(factory);
 
     ID3D11Texture2D* temp_window_buffer;
-    DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void**) &temp_window_buffer));
-    DX_REQUIRE(ID3D11Device_CreateRenderTargetView(render_device, (ID3D11Resource*) temp_window_buffer, NULL, &render_window_rtview));
+    DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void**) &temp_window_buffer))
+    DX_REQUIRE(ID3D11Device_CreateRenderTargetView(render_device, (ID3D11Resource*) temp_window_buffer, NULL, &render_window_rtview))
     ID3D11Texture2D_Release(temp_window_buffer);
 
     ShowWindow(midWindow.hWnd, SW_SHOWDEFAULT);

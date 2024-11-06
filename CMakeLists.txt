@@ -31,7 +31,6 @@ target_link_libraries(${TARGET_NAME}
 #        user32
         dxgi
         d3d11
-        dxguid
         cef
 )
 
