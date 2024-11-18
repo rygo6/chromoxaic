@@ -82,7 +82,7 @@ void CEF_CALLBACK on_dismiss_permission_prompt(
 //MID_DECLARE_CEF_REF_COUNT_CALLBACKS2(permission_handler, mxc_cef_permission_handler_t);
 
 void initialize_cef_permission_handler_t(mxc_cef_permission_handler_t* handler) {
-  printf("initialize_cef_life_span_handler\n");
+  printf("initialize_permission_handler_t\n");
   handler->cef.base.size = sizeof(mxc_cef_permission_handler_t);
 
 //  MID_SET_CEF_REF_COUNT_CALLBACKS2(permission_handler, handler);

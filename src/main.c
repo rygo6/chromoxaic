@@ -85,7 +85,7 @@
     REQUIRE_WIN32(SUCCEEDED(hr), hr); \
   }
 
-mxc_cef_life_span_handler_t g_life_span_handler = {};
+life_span_handler_t g_life_span_handler = {};
 mxc_cef_render_handler_t g_render_handler = {};
 mxc_cef_permission_handler_t g_permission_handler = {};
 
@@ -96,7 +96,7 @@ ID3D11Device1* render_device1;
 ID3D11DeviceContext* render_context;
 ID3D11DeviceContext1* render_context1;
 ID3D11RenderTargetView* render_window_rtview;
-HANDLE render_frame_latency_wait;
+//HANDLE render_frame_latency_wait;
 
 void CEF_CALLBACK on_paint(cef_render_handler_t* self,
                            cef_browser_t* browser,
@@ -116,9 +116,10 @@ void CEF_CALLBACK on_accelerated_paint(
     size_t dirtyRectsCount,
     cef_rect_t const* dirtyRects,
     const cef_accelerated_paint_info_t* info) {
+  printf("%lu: on_accelerated_paint\n", GetCurrentThreadId());
 
-  float clear_color[4] = {1.0f, 0.0f, 0.0f, 1.0f};// Red color
-  ID3D11DeviceContext_ClearRenderTargetView(render_context, render_window_rtview, clear_color);
+//  float clear_color[4] = {1.0f, 0.0f, 0.0f, 1.0f};// Red color
+//  ID3D11DeviceContext_ClearRenderTargetView(render_context, render_window_rtview, clear_color);
 
   ID3D11Texture2D* tex;
   ID3D11Device1_OpenSharedResource1(render_device1, info->shared_texture_handle, &IID_ID3D11Texture2D, (void**) &tex);
@@ -134,31 +135,38 @@ void CEF_CALLBACK on_accelerated_paint(
 
   IDXGISwapChain_Present(render_swapchain, 0, 0);
 
-  //  WaitForSingleObjectEx(render_frame_latency_wait, INFINITE, TRUE);
+//  WaitForSingleObjectEx(render_frame_latency_wait, INFINITE, TRUE);
 }
 
 
 int main(int argc, char* argv[]) {
 
-  printf("\nProcess args: ");
-  switch (argc) {
-    case 0:
-      printf("CEF version: %s\n", CEF_VERSION);
-      break;
-    case 1:
-      printf("none (Main process)");
-    default:
-      for (int i = 1; i < argc; i++) {
-        printf("%s ", argv[i]);
-      }
+  {
+    char buffer[2048];
+    int pos = snprintf(buffer, sizeof(buffer), "%lu Process args:\n", GetCurrentThreadId());
+    switch (argc) {
+      case 0:
+        pos += snprintf(buffer + pos, sizeof(buffer) - pos, "CEF version: %s\n", CEF_VERSION);
+        break;
+      case 1:
+        pos += snprintf(buffer + pos, sizeof(buffer) - pos, "none (Main process)\n");
+      default:
+        for (int i = 1; i < argc; i++) {
+          pos += snprintf(buffer + pos, sizeof(buffer) - pos, "%s\n", argv[i]);
+        }
+    }
+    printf("\n%s\n", buffer);
   }
 
   cef_app_t app = {};
   initialize_cef_app(&app);
 
-  printf("cef_execute_process, argc=%d\n", argc);
-  cef_main_args_t main_args = {.instance = GetModuleHandle(NULL)};
-  int code = cef_execute_process(&main_args, (cef_app_t*) &app, NULL);
+  printf("%lu: cef_execute_process\n", GetCurrentThreadId());
+  cef_main_args_t main_args = {
+      .instance = GetModuleHandle(NULL),
+  };
+  int code = cef_execute_process(&main_args, &app, NULL);
+  printf("%lu: cef_execute_process return code: %d\n", GetCurrentThreadId(), code);
   if (code >= 0) {
     _exit(code);
   }
@@ -185,7 +193,7 @@ int main(int argc, char* argv[]) {
     DX_REQUIRE(ID3D11Device_QueryInterface(render_device, &IID_ID3D11Device1, (void**) &render_device1))
     DX_REQUIRE(ID3D11DeviceContext_QueryInterface(render_context, &IID_ID3D11DeviceContext1, (void**) &render_context1))
 
-    printf("D3D11 Device: %p\n", render_device);
+    printf("%lu: D3D11 Device: %p\n", GetCurrentThreadId(), render_device);
 
     DXGI_SWAP_CHAIN_DESC desc = {
         .BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM,
@@ -201,12 +209,6 @@ int main(int argc, char* argv[]) {
         .Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT,
     };
     DX_REQUIRE(IDXGIFactory_CreateSwapChain(factory, (IUnknown*) render_device, &desc, &render_swapchain))
-
-    IDXGISwapChain2* swapchain2;
-    //    DX_REQUIRE(IDXGISwapChain_QueryInterface(render_swapchain, &IID_IDXGISwapChain2, (void**) &swapchain2));
-    //    render_frame_latency_wait = IDXGISwapChain2_GetFrameLatencyWaitableObject(swapchain2);
-    //    IDXGISwapChain2_Release(swapchain2);
-    //    DX_REQUIRE(IDXGIFactory_MakeWindowAssociation(factory, midWindow.hWnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER));
 
     IDXGIFactory_Release(factory);
 
@@ -225,25 +227,31 @@ int main(int argc, char* argv[]) {
     REQUIRE(GetModuleFileName(NULL, exe_path, MAX_PATH), "Couldn't get exe path");
     char* last_slash = strrchr(exe_path, '\\');
     if (last_slash != NULL) *last_slash = '\0';
-    printf("Executable directory: %s\n", exe_path);
+    printf("%lu: Executable Directory: %s\n", GetCurrentThreadId(), exe_path);
+
     const char* cache_folder = "\\cache";
     char root_cache_path[MAX_PATH + strlen(cache_folder)];
     sprintf(root_cache_path, "%s%s", exe_path, cache_folder);
-    printf("Cache directory: %s\n", root_cache_path);
+    printf("%lu: Cache Directory: %s\n", GetCurrentThreadId(), root_cache_path);
+
     cef_string_t cef_root_cache_path = {};
     cef_string_utf8_to_utf16(root_cache_path, strlen(root_cache_path), &cef_root_cache_path);
+
     cef_settings_t settings = {
         .size = sizeof(cef_settings_t),
         .log_severity = LOGSEVERITY_WARNING,
         .no_sandbox = 1,
-        .windowless_rendering_enabled = 1,
-        .multi_threaded_message_loop = 0,
-        .external_message_pump = 1,
+        .windowless_rendering_enabled = true,
+        .multi_threaded_message_loop = false,
+        .external_message_pump = true,
         .root_cache_path = cef_root_cache_path,
     };
 
-    printf("cef_initialize\n");
-    cef_initialize(&main_args, &settings, (cef_app_t*) &app, NULL);
+    printf("%lu: cef_initialize\n", GetCurrentThreadId());
+    if (!cef_initialize(&main_args, &settings, &app, NULL)){
+      printf("%lu: cef_initialize Fail! %d\n", GetCurrentThreadId(), cef_get_exit_code());
+      return 1;
+    }
 
     char window_name[] = "moxaic";
     cef_string_t cef_window_name = {};
@@ -257,17 +265,13 @@ int main(int argc, char* argv[]) {
         .bounds.y = 0,
         .bounds.width = DEFAULT_WIDTH,
         .bounds.height = DEFAULT_HEIGHT,
-        .windowless_rendering_enabled = 1,
-        .shared_texture_enabled = 1,
-        .external_begin_frame_enabled = 1,
+        .windowless_rendering_enabled = true,
+        .shared_texture_enabled = true,
+        .external_begin_frame_enabled = false,
+        .runtime_style = CEF_RUNTIME_STYLE_ALLOY
     };
 
-    cef_browser_settings_t browser_settings = {
-        .size = sizeof(cef_browser_settings_t),
-        .windowless_frame_rate = 30,
-    };
-
-    mxc_cef_client_t client = {}; // handler refs need to go on client
+    client_t client = {}; // handler refs need to go on client
     initialize_cef_client(&client);
 
     g_render_handler.cef.on_accelerated_paint = on_accelerated_paint;
@@ -276,21 +280,41 @@ int main(int argc, char* argv[]) {
     initialize_cef_life_span_handler(&g_life_span_handler);
     initialize_cef_permission_handler_t(&g_permission_handler);
 
+    printf("%lu: cef_browser_host_create_browser\n", GetCurrentThreadId());
     char url[] = "https://immersive-web.github.io/webxr-samples/";
+//    char url[] = "https://threejs.org/examples/#webgl_animation_keyframes/";
+//    char url[] = "https://google.com/";
     cef_string_t cef_url = {};
     cef_string_utf8_to_utf16(url, strlen(url), &cef_url);
 
-    printf("cef_browser_host_create_browser\n");
+    cef_browser_settings_t browser_settings = {
+        .size = sizeof(cef_browser_settings_t),
+        .windowless_frame_rate = 60,
+        .webgl = STATE_ENABLED,
+    };
 
     assert(cef_currently_on(TID_UI));
     cef_browser_t* browser = cef_browser_host_create_browser_sync(&window_info, (struct _cef_client_t*) &client, &cef_url, &browser_settings, NULL, NULL);
     cef_browser_host_t* browser_host = browser->get_host(browser);
 
-    const useconds_t frame_rate = (useconds_t) ((1.0f / 60.0f) * 1000000.0f);
+//    cef_run_message_loop();
+
+//    browser_host->send_external_begin_frame(browser_host);
+    cef_do_message_loop_work();
+
+    const double frame_time_millisecond = 1000.0 / 240.0;
+    const double millisecond_to_microsecond = 1000.0;
+    double last_frame_time_sent = 0;
 
     while (midWindow.running) {
 
+      last_frame_time_sent = midWindowQueryTimeMs();
+//      browser_host->send_external_begin_frame(browser_host);
+
       midUpdateWindowInput();
+
+      if (__atomic_exchange_n(&g_schedule_message_pump_work, 0, __ATOMIC_RELAXED))
+        cef_do_message_loop_work();
 
       const cef_mouse_event_t mouse_event = {
           .x = midWindowInput.mouseX,
@@ -307,22 +331,16 @@ int main(int argc, char* argv[]) {
           break;
       }
 
-      int work_count;
-      __atomic_load(&schedule_message_pump_work, &work_count, __ATOMIC_RELAXED);
-      while (work_count > 0) {
-        cef_do_message_loop_work();
-        work_count = __atomic_sub_fetch(&schedule_message_pump_work, 1, __ATOMIC_RELAXED);
-      }
-
-      browser_host->send_external_begin_frame(browser_host);
-
-      usleep(frame_rate);
+      double wait_time_ms = frame_time_millisecond - (midWindowQueryTimeMs() - last_frame_time_sent);
+      useconds_t wait_time_microseconds = (useconds_t)(wait_time_ms * millisecond_to_microsecond) - millisecond_to_microsecond;
+      usleep(wait_time_microseconds);
     }
 
-    bool closed = false;
+    bool closed = browser_host->try_close_browser(browser_host);
     while (!closed) {
-      closed = browser_host->try_close_browser(browser_host);
+      usleep(100);
       cef_do_message_loop_work();
+      closed = browser_host->try_close_browser(browser_host);
     }
 
     printf("cef_shutdown\n");

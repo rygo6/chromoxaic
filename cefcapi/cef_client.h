@@ -6,10 +6,10 @@
 #include "cef_render_handler.h"
 #include "include/capi/cef_client_capi.h"
 
-typedef struct mxc_cef_client_t {
+typedef struct _client_t {
   cef_client_t cef;
   int ref_count;
-} mxc_cef_client_t;
+} client_t;
 
 cef_context_menu_handler_t* CEF_CALLBACK get_context_menu_handler(cef_client_t* self) {
   DEBUG_CALLBACK("get_context_menu_handler\n");
@@ -86,14 +86,14 @@ int CEF_CALLBACK on_process_message_received(
   return 0;
 }
 
-MID_DECLARE_CEF_REF_COUNT_CALLBACKS2(client, mxc_cef_client_t);
+MID_DECLARE_CEF_REF_COUNT_CALLBACKS2(client);
 
-void initialize_cef_client(mxc_cef_client_t* client) {
+void initialize_cef_client(client_t* client) {
   printf("initialize_client_handler\n");
 
-  client->cef.base.size = sizeof(mxc_cef_client_t);
+  client->cef.base.size = sizeof(client_t);
 
-  MID_SET_CEF_REF_COUNT_CALLBACKS2(client, client);
+  MID_SET_CEF_REF_COUNT_CALLBACKS2(client);
 
   client->cef.get_context_menu_handler = get_context_menu_handler;
   client->cef.get_dialog_handler = get_dialog_handler;

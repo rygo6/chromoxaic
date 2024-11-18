@@ -76,6 +76,7 @@ extern MidWindowInput midWindowInput;
 
 void midUpdateWindowInput();
 void midCreateWindow();
+double midWindowQueryTimeMs();
 
 #ifdef MID_WINDOW_VULKAN
 void midCreateVulkanSurface(const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface);
@@ -172,6 +173,13 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 }
 
 double timeQueryMs;
+
+double midWindowQueryTimeMs() {
+  uint64_t time;
+  QueryPerformanceCounter((LARGE_INTEGER*) &time);
+  uint64_t adjustedTime = (time * 1000000) / midWindow.frequency;
+  return (double) adjustedTime * 0.000001;
+}
 
 void midUpdateWindowInput() {
   midWindowInput.mouseDeltaX = 0;
