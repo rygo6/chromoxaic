@@ -24,8 +24,11 @@ add_executable(${TARGET_NAME}
 #set(CEF_LINK_PATH "C:/Developer/cef_binary_129.0.12/Release")
 #set(CEF_INCLUDE_PATH "C:/Developer/cef_binary_129.0.12")
 
-set(CEF_LINK_PATH "C:/Developer/cef_binary_130.1.16/Release")
+set(CEF_LINK_PATH "C:/Developer/cef_binary_130.1.16/Debug")
 set(CEF_INCLUDE_PATH "C:/Developer/cef_binary_130.1.16")
+
+#set(CEF_LINK_PATH "C:/Developer/cef_binary_131.2.7/Debug")
+#set(CEF_INCLUDE_PATH "C:/Developer/cef_binary_131.2.7")
 
 #set(CEF_LINK_PATH "C:/code/chromium_git/chromium/src/out/Debug_GN_x64")
 #set(CEF_INCLUDE_PATH "C:/code/chromium_git/chromium/src/cef")

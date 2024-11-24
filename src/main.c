@@ -95,8 +95,6 @@ ID3D11Device* render_device;
 ID3D11Device1* render_device1;
 ID3D11DeviceContext* render_context;
 ID3D11DeviceContext1* render_context1;
-ID3D11RenderTargetView* render_window_rtview;
-//HANDLE render_frame_latency_wait;
 
 void CEF_CALLBACK on_paint(cef_render_handler_t* self,
                            cef_browser_t* browser,
@@ -123,8 +121,8 @@ void CEF_CALLBACK on_accelerated_paint(
 
   ID3D11Texture2D* tex;
   ID3D11Device1_OpenSharedResource1(render_device1, info->shared_texture_handle, &IID_ID3D11Texture2D, (void**) &tex);
-  D3D11_TEXTURE2D_DESC td;
-  ID3D11Texture2D_GetDesc(tex, &td);
+//  D3D11_TEXTURE2D_DESC td;
+//  ID3D11Texture2D_GetDesc(tex, &td);
 
   //  D3D11_VIEWPORT vp = { 0.0f, 0.0f, (FLOAT)td.Width, (FLOAT)td.Height, 0.0f, 1.0f };
   //  ID3D11DeviceContext1_RSSetViewports(render_context1, 1, &vp);
@@ -132,7 +130,6 @@ void CEF_CALLBACK on_accelerated_paint(
   ID3D11Texture2D* temp_window_buffer;
   DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void**) &temp_window_buffer));
   ID3D11DeviceContext1_CopyResource(render_context1, (ID3D11Resource*) temp_window_buffer, (ID3D11Resource*) tex);
-
   IDXGISwapChain_Present(render_swapchain, 0, 0);
 
 //  WaitForSingleObjectEx(render_frame_latency_wait, INFINITE, TRUE);
@@ -197,7 +194,7 @@ int main(int argc, char* argv[]) {
 
     DXGI_SWAP_CHAIN_DESC desc = {
         .BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM,
-        .BufferDesc.RefreshRate.Numerator = 60,
+        .BufferDesc.RefreshRate.Numerator = 240,
         .BufferDesc.RefreshRate.Denominator = 1,
         .SampleDesc.Count = 1,
         .SampleDesc.Quality = 0,
@@ -212,10 +209,10 @@ int main(int argc, char* argv[]) {
 
     IDXGIFactory_Release(factory);
 
-    ID3D11Texture2D* temp_window_buffer;
-    DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void**) &temp_window_buffer))
-    DX_REQUIRE(ID3D11Device_CreateRenderTargetView(render_device, (ID3D11Resource*) temp_window_buffer, NULL, &render_window_rtview))
-    ID3D11Texture2D_Release(temp_window_buffer);
+//    ID3D11Texture2D* temp_window_buffer;
+//    DX_REQUIRE(IDXGISwapChain_GetBuffer(render_swapchain, 0, &IID_ID3D11Texture2D, (void**) &temp_window_buffer))
+//    DX_REQUIRE(ID3D11Device_CreateRenderTargetView(render_device, (ID3D11Resource*) temp_window_buffer, NULL, &render_window_rtview))
+//    ID3D11Texture2D_Release(temp_window_buffer);
 
     ShowWindow(midWindow.hWnd, SW_SHOWDEFAULT);
     UpdateWindow(midWindow.hWnd);
@@ -242,7 +239,7 @@ int main(int argc, char* argv[]) {
         .log_severity = LOGSEVERITY_WARNING,
         .no_sandbox = 1,
         .windowless_rendering_enabled = true,
-        .multi_threaded_message_loop = false,
+//        .multi_threaded_message_loop = true,
         .external_message_pump = true,
         .root_cache_path = cef_root_cache_path,
     };
@@ -267,7 +264,7 @@ int main(int argc, char* argv[]) {
         .bounds.height = DEFAULT_HEIGHT,
         .windowless_rendering_enabled = true,
         .shared_texture_enabled = true,
-        .external_begin_frame_enabled = false,
+//        .external_begin_frame_enabled = true,
         .runtime_style = CEF_RUNTIME_STYLE_ALLOY
     };
 
@@ -293,11 +290,15 @@ int main(int argc, char* argv[]) {
         .webgl = STATE_ENABLED,
     };
 
-    assert(cef_currently_on(TID_UI));
-    cef_browser_t* browser = cef_browser_host_create_browser_sync(&window_info, (struct _cef_client_t*) &client, &cef_url, &browser_settings, NULL, NULL);
-    cef_browser_host_t* browser_host = browser->get_host(browser);
-
+//    if (!cef_browser_host_create_browser(&window_info, (struct _cef_client_t*) &client, &cef_url, &browser_settings, NULL, NULL)){
+//      printf("%lu: cef_browser_host_create_browser Fail! %d\n", GetCurrentThreadId(), cef_get_exit_code());
+//      return 1;
+//    }
 //    cef_run_message_loop();
+
+    assert(cef_currently_on(TID_UI));
+    cef_browser_t* sync_browser = cef_browser_host_create_browser_sync(&window_info, (struct _cef_client_t*) &client, &cef_url, &browser_settings, NULL, NULL);
+    cef_browser_host_t* browser_host = sync_browser->get_host(sync_browser);
 
 //    browser_host->send_external_begin_frame(browser_host);
     cef_do_message_loop_work();
@@ -313,7 +314,7 @@ int main(int argc, char* argv[]) {
 
       midUpdateWindowInput();
 
-      if (__atomic_exchange_n(&g_schedule_message_pump_work, 0, __ATOMIC_RELAXED))
+//      if (__atomic_exchange_n(&g_schedule_message_pump_work, 0, __ATOMIC_RELAXED))
         cef_do_message_loop_work();
 
       const cef_mouse_event_t mouse_event = {
